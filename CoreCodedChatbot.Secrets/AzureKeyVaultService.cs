@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using CoreCodedChatbot.Config;
 using Microsoft.Azure.KeyVault;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
@@ -16,11 +15,11 @@ namespace CoreCodedChatbot.Secrets
 
         private Dictionary<string, string> _secrets;
 
-        public AzureKeyVaultService(IConfigService configService)
+        public AzureKeyVaultService(string appId, string certThumbprint, string baseUrl)
         {
-            _appId = configService.Get<string>("KeyVaultAppId");
-            _certThumbprint = configService.Get<string>("KeyVaultCertThumbprint");
-            _baseUrl = configService.Get<string>("KeyVaultBaseUrl");
+            _appId = appId;
+            _certThumbprint = certThumbprint;
+            _baseUrl = baseUrl;
         }
 
         public async Task Initialize()
