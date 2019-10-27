@@ -8,6 +8,7 @@ namespace CoreCodedChatbot.Secrets
             string keyVaultAppId, string keyVaultCertThumbPrint, string keyVaultBaseUrl)
         {
             var secretService = new AzureKeyVaultService(keyVaultAppId, keyVaultCertThumbPrint, keyVaultBaseUrl);
+            secretService.Initialize();
 
             services.AddSingleton<ISecretService, AzureKeyVaultService>(provider => secretService);
             return services;
