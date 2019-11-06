@@ -11,10 +11,7 @@ pr: none
 pool:
   vmImage: 'ubuntu-latest'
 
-variables:
-  Version.Revision: 1.0.$(BuildID)
-
-name: $(Version.Revision)
+name: 1.0.$(BuildID)
 
 steps:
 - task: DotNetCoreCLI@2
@@ -27,8 +24,7 @@ steps:
   inputs:
     command: 'pack'
     packagesToPack: '**/*.csproj'
-    versioningScheme: byEnvVar
-    versionEnvVar: Version.Revision
+    versioningScheme: 'byBuildNumber'
 
 - task: PublishBuildArtifacts@1
   inputs:
