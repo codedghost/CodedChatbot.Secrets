@@ -11,7 +11,7 @@ pr: none
 pool:
   vmImage: 'ubuntu-latest'
 
-name: 1.0.$(BuildID)
+name: 1.0.$[counter(revision-counter, 0)]
 
 steps:
 - task: DotNetCoreCLI@2
