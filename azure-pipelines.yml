@@ -8,9 +8,6 @@ trigger:
 
 pr: none
 
-pool:
-  vmImage: 'ubuntu-latest'
-
 name: 1.0.$(BuildID)
 
 steps:
@@ -25,6 +22,7 @@ steps:
     command: 'pack'
     packagesToPack: '**/*.csproj'
     versioningScheme: 'byBuildNumber'
+
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
