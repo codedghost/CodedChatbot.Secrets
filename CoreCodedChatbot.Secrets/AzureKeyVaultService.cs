@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.Azure.KeyVault;
+using Microsoft.Azure.KeyVault.Models;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using Microsoft.Rest.Azure;
 
 namespace CoreCodedChatbot.Secrets
 {
@@ -44,14 +46,29 @@ namespace CoreCodedChatbot.Secrets
 
                 _secrets = new Dictionary<string, string>();
 
-                var listSecrets = await keyVaultClient.GetSecretsAsync(_baseUrl, Int32.MaxValue);
+                var listSecrets = await keyVaultClient.GetSecretsAsync(_baseUrl);
 
-                foreach (var secretInfo in listSecrets)
+
+                await AddSecretsToDict(listSecrets, keyVaultClient);
+                
+                var nextPage = listSecrets.NextPageLink;
+
+                while (!string.IsNullOrEmpty(listSecrets.NextPageLink))
                 {
-                    var secret = await keyVaultClient.GetSecretAsync(_baseUrl, secretInfo.Identifier.Name);
+                    listSecrets = await keyVaultClient.GetSecretsNextAsync(nextPage);
 
-                    _secrets.Add(secretInfo.Identifier.Name, secret.Value);
+                    await AddSecretsToDict(listSecrets, keyVaultClient);
                 }
+            }
+        }
+
+        private async Task AddSecretsToDict(IPage<SecretItem> listSecrets, KeyVaultClient keyVaultClient)
+        {
+            foreach (var secretInfo in listSecrets)
+            {
+                var secret = await keyVaultClient.GetSecretAsync(_baseUrl, secretInfo.Identifier.Name);
+
+                _secrets.Add(secretInfo.Identifier.Name, secret.Value);
             }
         }
 
