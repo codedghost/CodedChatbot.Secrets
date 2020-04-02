@@ -44,7 +44,7 @@ namespace CoreCodedChatbot.Secrets
 
                 _secrets = new Dictionary<string, string>();
 
-                var listSecrets = await keyVaultClient.GetSecretsAsync(_baseUrl);
+                var listSecrets = await keyVaultClient.GetSecretsAsync(_baseUrl, Int32.MaxValue);
 
                 foreach (var secretInfo in listSecrets)
                 {
