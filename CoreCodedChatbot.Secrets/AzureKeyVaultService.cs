@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using CoreCodedChatbot.Config;
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.KeyVault.Models;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
@@ -11,17 +12,13 @@ namespace CoreCodedChatbot.Secrets
 {
     public class AzureKeyVaultService : ISecretService
     {
-        private string _appId;
-        private string _certThumbprint;
-        private string _baseUrl;
+        private readonly IConfigService _configService;
 
         private Dictionary<string, string> _secrets;
 
-        public AzureKeyVaultService(string appId, string certThumbprint, string baseUrl)
+        public AzureKeyVaultService(IConfigService configService)
         {
-            _appId = appId;
-            _certThumbprint = certThumbprint;
-            _baseUrl = baseUrl;
+            _configService = configService;
         }
 
         public async Task Initialize()
@@ -31,9 +28,9 @@ namespace CoreCodedChatbot.Secrets
                 store.Open(OpenFlags.ReadOnly);
 
                 var cert = store.Certificates.Find(X509FindType.FindByThumbprint,
-                    _certThumbprint, false)[0];
+                    _configService.Get<string>("KeyVaultCertThumbprint"), false)[0];
 
-                var assertionCert = new ClientAssertionCertificate(_appId, cert);
+                var assertionCert = new ClientAssertionCertificate(_configService.Get<string>("KeyVaultAppId"), cert);
 
                 var keyVaultClient = new KeyVaultClient(async (authority, resource, scope) =>
                 {
@@ -46,7 +43,7 @@ namespace CoreCodedChatbot.Secrets
 
                 _secrets = new Dictionary<string, string>();
 
-                var listSecrets = await keyVaultClient.GetSecretsAsync(_baseUrl);
+                var listSecrets = await keyVaultClient.GetSecretsAsync(_configService.Get<string>("KeyVaultBaseUrl"));
 
 
                 await AddSecretsToDict(listSecrets, keyVaultClient);
@@ -66,7 +63,7 @@ namespace CoreCodedChatbot.Secrets
         {
             foreach (var secretInfo in listSecrets)
             {
-                var secret = await keyVaultClient.GetSecretAsync(_baseUrl, secretInfo.Identifier.Name);
+                var secret = await keyVaultClient.GetSecretAsync(_configService.Get<string>("KeyVaultBaseUrl"), secretInfo.Identifier.Name);
 
                 _secrets.Add(secretInfo.Identifier.Name, secret.Value);
             }
