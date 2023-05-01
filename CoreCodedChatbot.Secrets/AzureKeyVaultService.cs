@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.KeyVault.Models;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Microsoft.Rest.Azure;
+using Azure;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using Microsoft.Identity.Client;
 
 namespace CoreCodedChatbot.Secrets
 {
@@ -14,14 +14,16 @@ namespace CoreCodedChatbot.Secrets
         private string _appId;
         private string _certThumbprint;
         private string _baseUrl;
+        private readonly string _tenantId;
 
         private Dictionary<string, string> _secrets;
 
-        public AzureKeyVaultService(string appId, string certThumbprint, string baseUrl)
+        public AzureKeyVaultService(string appId, string certThumbprint, string baseUrl, string tenantId)
         {
             _appId = appId;
             _certThumbprint = certThumbprint;
             _baseUrl = baseUrl;
+            _tenantId = tenantId;
         }
 
         public async Task Initialize()
@@ -33,42 +35,26 @@ namespace CoreCodedChatbot.Secrets
                 var cert = store.Certificates.Find(X509FindType.FindByThumbprint,
                     _certThumbprint, false)[0];
 
-                var assertionCert = new ClientAssertionCertificate(_appId, cert);
-
-                var keyVaultClient = new KeyVaultClient(async (authority, resource, scope) =>
-                {
-                    var context = new AuthenticationContext(authority, TokenCache.DefaultShared);
-
-                    var result = await context.AcquireTokenAsync(resource, assertionCert);
-
-                    return result.AccessToken;
-                });
+                var keyVaultClient = new SecretClient(new Uri(_baseUrl), new ClientCertificateCredential(_tenantId, _appId, cert));
 
                 _secrets = new Dictionary<string, string>();
 
-                var listSecrets = await keyVaultClient.GetSecretsAsync(_baseUrl);
+                var listSecrets = keyVaultClient.GetPropertiesOfSecretsAsync();
 
-
-                await AddSecretsToDict(listSecrets, keyVaultClient);
-                
-                var nextPage = listSecrets.NextPageLink;
-
-                while (!string.IsNullOrEmpty(listSecrets.NextPageLink))
-                {
-                    listSecrets = await keyVaultClient.GetSecretsNextAsync(nextPage);
-
-                    await AddSecretsToDict(listSecrets, keyVaultClient);
-                }
+                await AddSecretsToDict(listSecrets.AsPages(), keyVaultClient);
             }
         }
 
-        private async Task AddSecretsToDict(IPage<SecretItem> listSecrets, KeyVaultClient keyVaultClient)
+        private async Task AddSecretsToDict(IAsyncEnumerable<Page<SecretProperties>> pages, SecretClient client)
         {
-            foreach (var secretInfo in listSecrets)
+            await foreach (var page in pages)
             {
-                var secret = await keyVaultClient.GetSecretAsync(_baseUrl, secretInfo.Identifier.Name);
+                foreach (var secretProperty in page.Values)
+                {
+                    var secret = await client.GetSecretAsync(secretProperty.Name);
 
-                _secrets.Add(secretInfo.Identifier.Name, secret.Value);
+                    _secrets.Add(secret.Value.Name, secret.Value.Value);
+                }
             }
         }
 
